@@ -29,9 +29,8 @@ vectordb/docs/*
 vectordb/experience/*
 vectordb/demonstration/*
 
-# Ignore the data files and scripts
+# Ignore the data files
 tasks/*
-scripts/*
 backup/*
 node_modules/*
 
@@ -51,6 +50,10 @@ datasUFO
 
 # Ignore mkdocs build output
 documents/site/
+
+# Windows console device artifact
+CONOUT$
+CONIN$
 
 # Ignore frontend environment files with auto-generated content
 galaxy/webui/frontend/.env.development.local

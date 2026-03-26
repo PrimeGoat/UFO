@@ -11,4 +11,7 @@
 
 cd /d D:\AI\UFO
 call conda activate D:\AI\conda-envs\ufo
+chcp 65001 >nul
+set PYTHONUTF8=1
+set PYTHONIOENCODING=utf-8
 python ufo_mcp_server.py
