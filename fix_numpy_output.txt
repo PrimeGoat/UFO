@@ -1,0 +1,74 @@
+=== numpy fix log === 
+ 
+[1] Current versions 
+numpy: 2.4.3
+pandas: 3.0.1
+ 
+[2] Reinstalling numpy < 2.0 
+Collecting numpy<2.0,>=1.26
+  Using cached numpy-1.26.4-cp311-cp311-win_amd64.whl.metadata (61 kB)
+Using cached numpy-1.26.4-cp311-cp311-win_amd64.whl (15.8 MB)
+Installing collected packages: numpy
+  Attempting uninstall: numpy
+    Found existing installation: numpy 2.4.3
+    Uninstalling numpy-2.4.3:
+      Successfully uninstalled numpy-2.4.3
+  WARNING: The script f2py.exe is installed in 'D:\AI\conda-envs\ufo\Scripts' which is not on PATH.
+  Consider adding this directory to PATH or, if you prefer to suppress this warning, use --no-warn-script-location.
+WARNING: Ignoring invalid distribution ~andas (D:\AI\conda-envs\ufo\Lib\site-packages)
+Successfully installed numpy-1.26.4
+
+[notice] A new release of pip is available: 25.3 -> 26.0.1
+[notice] To update, run: D:\AI\conda-envs\ufo\python.exe -m pip install --upgrade pip
+ 
+[3] Reinstalling pandas 
+WARNING: Ignoring invalid distribution ~andas (D:\AI\conda-envs\ufo\Lib\site-packages)
+Collecting pandas
+  Using cached pandas-3.0.1-cp311-cp311-win_amd64.whl.metadata (19 kB)
+Collecting numpy>=1.26.0 (from pandas)
+  Using cached numpy-2.4.3-cp311-cp311-win_amd64.whl.metadata (6.6 kB)
+Collecting python-dateutil>=2.8.2 (from pandas)
+  Using cached python_dateutil-2.9.0.post0-py2.py3-none-any.whl.metadata (8.4 kB)
+Collecting tzdata (from pandas)
+  Using cached tzdata-2025.3-py2.py3-none-any.whl.metadata (1.4 kB)
+Collecting six>=1.5 (from python-dateutil>=2.8.2->pandas)
+  Using cached six-1.17.0-py2.py3-none-any.whl.metadata (1.7 kB)
+Using cached pandas-3.0.1-cp311-cp311-win_amd64.whl (9.9 MB)
+Using cached numpy-2.4.3-cp311-cp311-win_amd64.whl (12.6 MB)
+Using cached python_dateutil-2.9.0.post0-py2.py3-none-any.whl (229 kB)
+Using cached six-1.17.0-py2.py3-none-any.whl (11 kB)
+Using cached tzdata-2025.3-py2.py3-none-any.whl (348 kB)
+WARNING: Ignoring invalid distribution ~andas (D:\AI\conda-envs\ufo\Lib\site-packages)
+Installing collected packages: tzdata, six, numpy, python-dateutil, pandas
+  Attempting uninstall: tzdata
+    Found existing installation: tzdata 2025.3
+    Uninstalling tzdata-2025.3:
+      Successfully uninstalled tzdata-2025.3
+  Attempting uninstall: six
+    Found existing installation: six 1.17.0
+    Uninstalling six-1.17.0:
+      Successfully uninstalled six-1.17.0
+  Attempting uninstall: numpy
+    Found existing installation: numpy 1.26.4
+    Uninstalling numpy-1.26.4:
+      Successfully uninstalled numpy-1.26.4
+  WARNING: The scripts f2py.exe and numpy-config.exe are installed in 'D:\AI\conda-envs\ufo\Scripts' which is not on PATH.
+  Consider adding this directory to PATH or, if you prefer to suppress this warning, use --no-warn-script-location.
+  Attempting uninstall: python-dateutil
+    Found existing installation: python-dateutil 2.9.0.post0
+    Uninstalling python-dateutil-2.9.0.post0:
+      Successfully uninstalled python-dateutil-2.9.0.post0
+  Attempting uninstall: pandas
+    Found existing installation: pandas 3.0.1
+    Uninstalling pandas-3.0.1:
+      Successfully uninstalled pandas-3.0.1
+
+Successfully installed numpy-2.4.3 pandas-3.0.1 python-dateutil-2.9.0.post0 six-1.17.0 tzdata-2025.3
+
+[notice] A new release of pip is available: 25.3 -> 26.0.1
+[notice] To update, run: D:\AI\conda-envs\ufo\python.exe -m pip install --upgrade pip
+ 
+[4] Verify 
+numpy: 2.4.3
+pandas: 3.0.1
+IMPORT OK

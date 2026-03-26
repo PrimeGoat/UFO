@@ -1,0 +1,65 @@
+# UFO Agent Configurations — OpenAI GPT-5.4
+# To switch to Claude: cp config/ufo/agents_claude.yaml config/ufo/agents.yaml
+
+HOST_AGENT:
+  VISUAL_MODE: False  # UIA window list is sufficient for app selection; screenshot only if explicitly needed
+  REASONING_MODEL: True  # Enables chain-of-thought; reduces logic errors like repeated Notepad opens
+  API_TYPE: "openai"
+  API_BASE: "https://api.openai.com/v1/"
+  API_KEY: "${OPENAI_API_KEY}"
+  API_VERSION: "2025-02-01-preview"
+  API_MODEL: "gpt-5.4"
+  PROMPT: "ufo/prompts/share/base/host_agent.yaml"
+  EXAMPLE_PROMPT: "ufo/prompts/examples/{mode}/host_agent_example.yaml"
+
+APP_AGENT:
+  VISUAL_MODE: False  # UIA provides control tree; screenshot only as last resort
+  REASONING_MODEL: True  # Reduces action sequencing errors
+  API_TYPE: "openai"
+  API_BASE: "https://api.openai.com/v1/"
+  API_KEY: "${OPENAI_API_KEY}"
+  API_VERSION: "2025-02-01-preview"
+  API_MODEL: "gpt-5.4"
+  PROMPT: "ufo/prompts/share/base/app_agent.yaml"
+  EXAMPLE_PROMPT: "ufo/prompts/examples/{mode}/app_agent_example.yaml"
+  EXAMPLE_PROMPT_AS: "ufo/prompts/examples/{mode}/app_agent_example_as.yaml"
+
+BACKUP_AGENT:
+  VISUAL_MODE: False
+  REASONING_MODEL: True
+  API_TYPE: "openai"
+  API_BASE: "https://api.openai.com/v1/"
+  API_KEY: "${OPENAI_API_KEY}"
+  API_VERSION: "2025-02-01-preview"
+  API_MODEL: "gpt-5.4"
+
+EVALUATION_AGENT:
+  VISUAL_MODE: False  # Evaluates task success from logs/results, not screenshots
+  REASONING_MODEL: True
+  API_TYPE: "openai"
+  API_BASE: "https://api.openai.com/v1/"
+  API_KEY: "${OPENAI_API_KEY}"
+  API_VERSION: "2025-02-01-preview"
+  API_MODEL: "gpt-5.4"
+
+# Omniparser Configuration (for grounding model)
+OMNIPARSER:
+  ENDPOINT: "http://localhost:8010"  # OmniParser server (run D:\AI\OmniParser\start_server.bat first)
+  BOX_THRESHOLD: 0.05
+  IOU_THRESHOLD: 0.1
+  USE_PADDLEOCR: True
+  IMGSZ: 640
+
+# LLM Parameters
+MAX_TOKENS: 4000
+MAX_RETRY: 5
+TEMPERATURE: 0.0
+TOP_P: 0.0
+TIMEOUT: 120
+
+# App API Prompt Configuration
+APP_API_PROMPT_ADDRESS:
+  "WINWORD.EXE": "ufo/prompts/apps/word/api.yaml"
+  "EXCEL.EXE": "ufo/prompts/apps/excel/api.yaml"
+  "msedge.exe": "ufo/prompts/apps/web/api.yaml"
+  "chrome.exe": "ufo/prompts/apps/web/api.yaml"

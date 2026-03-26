@@ -1,0 +1,1293 @@
+================================================================================
+  UFO2 AGENT ASSIGNMENT HANDOFF
+  Root directory: D:\AI\UFO\  (referred to as "." throughout this document)
+  Last updated:   2026-03-26
+================================================================================
+
+PURPOSE
+  This file is the authoritative written assignment handoff for ongoing UFO2
+  development work. It is intended to be readable and actionable by both a
+  human operator and an AI agent. Assignments are appended in the order they
+  are received. Each assignment is self-contained.
+
+CONVENTIONS
+  - "." always refers to D:\AI\UFO\ unless explicitly stated otherwise.
+  - Relative paths (e.g. .\logs\) are relative to D:\AI\UFO\.
+  - PowerShell is the preferred scripting language unless stated otherwise.
+  - Do not execute any assignment unless explicitly instructed to do so.
+  - Assignments are numbered starting from 0.
+
+================================================================================
+
+--------------------------------------------------------------------------------
+ASSIGNMENT 0 — Git Repository Initialization & Artifact Separation
+--------------------------------------------------------------------------------
+
+CONTEXT
+  D:\AI\UFO\ is the UFO2 Windows UI automation project (Microsoft Research).
+  The directory contains source code, YAML config files, PowerShell/batch
+  scripts, Python scripts, and generated runtime artifacts (logs, screenshots,
+  dumps, caches). The goal is to bring the project under version control with
+  a clean separation between tracked source and generated artifacts — so that
+  future changes can be tracked, accidental breakage can be detected, and the
+  repo never accumulates runtime noise.
+
+  A clean-install history must be created first from a fresh standalone
+  download/extract of UFO2 and then transplanted into the existing D:\AI\UFO\
+  working tree so that:
+    Commit 1 = clean install baseline
+    Commit 2 = current D:\AI\UFO\ setup
+
+  OmniParser is a separate thing in .. and must be handled the same way in its
+  own separate directory. Its history must likewise be:
+    Commit 1 = clean install baseline
+    Commit 2 = current setup
+
+  Note: D:\AI\UFO\ should be treated as the UFO2 repo root after the Git
+  metadata transplant. There is no parent git repo to worry about nesting
+  inside.
+
+STEP 1 — Clean Package Acquisition & Temporary Install Roots
+  Create fresh standalone clean-install directories outside the existing setup,
+  parallel in style to the current layout.
+
+  Required:
+    - Download the full UFO2 package and everything else it comes with/needs.
+    - Extract/install it into a temporary clean directory named:
+        ..\UFO2-clean\
+    - Download/setup OmniParser separately in .. as its own temporary clean
+      directory named:
+        ..\OmniParser-clean\
+
+  These temporary clean-install directories are only for generating the first
+  commit history. Do not reuse the existing working directories for this step.
+
+STEP 2 — Temporary Repository Initialization
+  For EACH temporary clean-install directory (..\UFO2-clean\ and
+  ..\OmniParser-clean\):
+    - Run: git init
+    - Do NOT make the initial commit until the appropriate .gitignore is in
+      place and staged.
+    - The first commit must represent the pristine clean install only.
+
+STEP 3 — .gitignore Strategy
+  Create a thorough .gitignore at the repo root (.\gitignore). Add any
+  subdirectory-level .gitignore files only if clearly needed for precision.
+
+  CRITICAL RULE:
+    The .gitignore rules must NOT ignore any files that already exist in the
+    freshly unpacked clean-install directories. If a file exists in
+    ..\UFO2-clean\ or ..\OmniParser-clean\ immediately after unpack/setup, it
+    must remain trackable and must be included in the post-install commit.
+
+    In other words:
+      - Ignore rules are for generated/runtime noise only
+      - Ignore rules must be written narrowly enough that they do not match
+        real files shipped by the clean install
+      - If an ignore pattern would match an existing unpacked file, refine it
+        with path-scoping, negation rules, or narrower patterns so that the
+        existing file is NOT ignored
+
+  MUST IGNORE (all expected runtime artifacts and generated noise, but only
+  where those are not part of the unpacked clean install):
+    Logs and task output:
+      logs/
+      *.log
+      *.ndjson
+      *.jsonl  (runtime task logs; NOTE: .jsonl source fixtures should be
+                evaluated case-by-case — ignore if in logs/, keep if in src)
+
+    Python artifacts:
+      __pycache__/
+      *.pyc, *.pyo, *.pyd
+      .pytest_cache/
+      *.egg-info/
+      dist/, build/
+      *.whl
+      .mypy_cache/
+
+    Crash and dump files:
+      *.dmp, *.mdmp
+      core
+      *.stackdump
+      crash_reports/
+
+    Temp and editor files:
+      *.tmp, *.temp
+      ~*, .~*
+      *.bak, *.swp, *.swo
+      .DS_Store, Thumbs.db, desktop.ini
+
+    Screenshots and captures (UFO2 saves these at runtime):
+      *.png and *.jpg inside logs/ or any task output directory
+      (Use path-scoped rules to avoid ignoring intentional image assets or any
+      image files that are already present in the unpacked clean install)
+
+    Cache and vectordb runtime indices:
+      .cache/
+      vectorstore/  (auto-generated FAISS indices; not the base vectordb/ dirs)
+      *.faiss
+      *.index
+
+    Model weight download artifacts:
+      *.part, *.incomplete
+      downloads/
+
+    IDE and tooling:
+      .vscode/
+      .idea/
+      *.suo, *.user
+      .history/
+
+    Environment/secrets:
+      .env
+      *.env
+      local_config.*
+      secrets.*
+
+  MUST NOT IGNORE:
+    - Any file already present in the freshly unpacked clean-install trees
+      (..\UFO2-clean\ and ..\OmniParser-clean\)
+    - All source code: *.py, *.yaml, *.yml, *.json, *.bat, *.ps1, *.txt, *.md
+    - Config files: config/ufo/*.yaml, .mcp.json, customization/
+    - Scripts: start_*.bat, start_*.ps1, and any scripts in .\scripts\ or .\
+    - .\user-notes\ and all its contents (this file included)
+    - README and documentation files
+    - Empty placeholder directories — add a .gitkeep in each to preserve them
+    - The ufo_mcp_server.py MCP server wrapper and its associated files
+
+  Before the first commit in each clean-install repo:
+    - Run git status or equivalent checks to confirm that no existing unpacked
+      files are being ignored accidentally
+    - If any existing unpacked file is ignored, adjust .gitignore until that
+      file is no longer ignored
+
+  Use .gitkeep files in any directories that must be tracked but are expected
+  to be empty at rest (e.g., .\logs\, .\vectordb\, etc.)
+
+STEP 4 — Clean-Install Baseline Commit
+  For EACH temporary clean-install directory (..\UFO2-clean\ and
+  ..\OmniParser-clean\):
+    - Stage all non-ignored files: git add -A
+    - Review staged files (git status) and confirm no artifacts are staged.
+    - Confirm that all files present in the freshly unpacked clean install are
+      included and that none were excluded by .gitignore.
+    - Create the initial commit with EXACTLY this message (no extra lines):
+        post-install
+
+  This commit represents the clean post-installation baseline.
+
+STEP 5 — Git Metadata Transplant Into Existing Working Trees
+  For EACH project (UFO2 and OmniParser), after the clean-install repo has its
+  first commit:
+    - Delete all contents of the temporary clean-install directory EXCEPT:
+        .git
+        and any other Git-related files/dirs created by git init/config
+    - Move those remaining Git files/dirs into the corresponding existing
+      working setup directory
+
+  After transplant, the existing working setup directory becomes the active repo
+  root for that project.
+
+STEP 6 — Current-Setup Commit
+  After transplanting the Git metadata into the existing working tree:
+
+  For UFO2:
+    - In D:\AI\UFO\, stage all non-ignored files: git add -A
+    - Review staged files (git status) and confirm no artifacts are staged.
+    - Ensure newly added files in the current setup are included.
+    - Create the second commit with EXACTLY this message (no extra lines):
+        current setup
+
+  For OmniParser:
+    - In its existing setup directory, stage all non-ignored files: git add -A
+    - Review staged files (git status) and confirm no artifacts are staged.
+    - Ensure newly added files in the current setup are included.
+    - Create the second commit with EXACTLY this message (no extra lines):
+        current setup
+
+  This commit represents the current working customized setup layered on top of
+  the clean post-install baseline.
+
+STEP 7 — Artifact Export Script
+  Write a PowerShell script at: .\scripts\export-artifacts.ps1
+
+  The script must:
+
+  a) Use git ls-files --others --ignored --exclude-standard to enumerate
+     all files currently matching the .gitignore rules. This is the
+     authoritative source — do not re-implement glob matching manually.
+
+  b) Accept a -Mode parameter with three values:
+       DryRun  → print what would happen; touch nothing (DEFAULT if omitted)
+       Copy    → copy matched files to destination; originals remain in place
+       Move    → move matched files to destination; removed from source
+
+  c) Compute a timestamp-named destination directory:
+       ..\UFO-artifacts\<timestamp>\
+       Timestamp format: MM-DD-YY HH-MM-SSam (e.g. "03-26-26 02-14-07PM")
+       Note: parent dir is D:\AI\UFO-artifacts\ (one level above the repo).
+
+  d) Preserve original relative directory structure inside the destination.
+     Example:
+       Source:      .\logs\task_001\step1.png
+       Destination: ..\UFO-artifacts\03-26-26 02-14-07PM\logs\task_001\step1.png
+
+  e) Output a readable report in all modes:
+       - Each file: source path → destination path
+       - Summary: total file count, total size (human-readable)
+       - DryRun output must be prominently labeled:
+           "=== DRY RUN — no files were modified ==="
+
+  f) Handle edge cases gracefully:
+       - Destination directory already exists → create it, don't error
+       - Files locked or in use → skip with a warning, continue
+       - Insufficient permissions → report clearly, skip affected files
+       - Empty match set → print "No artifact files found." and exit cleanly
+
+STEP 8 — Validation
+  In the transplanted D:\AI\UFO\ repo:
+  - Run the script in DryRun mode: .\scripts\export-artifacts.ps1 -Mode DryRun
+  - Review the output. Confirm:
+      * No source files (.py, .yaml, .ps1, .bat, config files) are matched
+      * Log files, caches, __pycache__, etc. ARE matched
+      * Destination paths correctly mirror the source tree structure
+  - If the dry run output is correct, run Copy mode:
+      .\scripts\export-artifacts.ps1 -Mode Copy
+  - Do NOT run in Move mode unless explicitly requested by the operator.
+
+STEP 9 — Verify Final State
+  After copy run completes:
+  - Run git status — should show a clean working tree with only tracked files
+    and expected .gitignore'd items remaining in place.
+  - Confirm D:\AI\UFO-artifacts\ contains a timestamped subdirectory with
+    the correct structure.
+  - Confirm the history shape is correct:
+      git log --oneline
+        newest:   current setup
+        previous: post-install
+
+  Do the equivalent verification for the OmniParser repo:
+      git log --oneline
+        newest:   current setup
+        previous: post-install
+
+OUTCOME
+  Four clean, separate trees:
+    ..\UFO2-clean\            — disposable source for commit 1 creation
+    D:\AI\UFO\                — Git-tracked system (clean install history
+                                 + current customized setup)
+    ..\OmniParser-clean\      — disposable source for commit 1 creation
+    [existing OmniParser dir] — Git-tracked OmniParser system (clean
+                                 install history + current customized setup)
+
+  Plus artifact storage:
+    D:\AI\UFO-artifacts\      — Timestamped runtime artifact archives
+
+--------------------------------------------------------------------------------
+END OF ASSIGNMENT 0
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+ASSIGNMENT 1 — Process Journal
+--------------------------------------------------------------------------------
+
+CONTEXT
+  This assignment covers the full work session in which UFO2 was audited,
+  repaired, configured, and wrapped as an MCP server. The session was
+  substantial: it involved diagnosing multiple broken configurations, fixing
+  runtime bugs, building new tooling from scratch, resolving integration
+  issues, and registering the resulting MCP server with Claude Code. A
+  detailed process record was not written during the session itself — this
+  assignment is the retroactive creation of that record.
+
+  The full session transcript (raw JSONL) is available at:
+    C:\Users\Denis\.claude\projects\D--Claude\6c20661b-7d5a-48e0-8a3c-6d55035febc5.jsonl
+  Read it as the primary source of truth for what happened and in what order.
+
+OUTPUT FILE
+  .\user-notes\process_journal.md
+
+FORMAT
+  - Markdown
+  - Chronological, structured with clear section headings per major phase
+  - Each phase should cover: what was done, how, what was found, what broke,
+    what was tried, what succeeded, and any key decisions made
+  - Use code blocks for commands, file snippets, and error messages where
+    relevant to clarity
+  - Do not reduce this to a bullet summary. Write it as a process narrative
+    with enough technical depth that someone can follow the reasoning.
+
+COMPLETION STANDARD
+  A senior engineer who was not present should be able to read this journal
+  and come away with effectively complete awareness of:
+    - The full sequence of work from start to finish
+    - Every significant problem encountered and how it was diagnosed
+    - Every fix applied and why that fix was chosen
+    - Decisions that were made, including deviations and retries
+    - The final state of the system at session end
+    - Anything left unresolved and why
+
+CONTENT REQUIREMENTS
+  The journal must cover all of the following (derive detail from the
+  transcript; this list is a required coverage checklist, not a structural
+  outline):
+
+  1. Initial audit scope and goals
+     - Full UFO2 component audit requested by the user
+     - Goal: find and fix all issues across every component and interconnection
+     - Secondary goal: wrap UFO2 as an MCP server callable by another agent
+
+  2. Port conflict investigation and resolution
+     - OmniParser server runs on port 8010
+     - UFO2's mcp.yaml had LinuxAgent BashExecutor also configured on 8010
+     - gradio_demo.py had hardcoded server_port=7861, crashing if port taken
+     - start_demo.bat was echoing the wrong port number
+     - What was found, what was changed, and in which files
+
+  3. API_BASE bug in agents.yaml / agents_openai.yaml
+     - All four API_BASE entries were set to the full chat completions endpoint
+       (https://api.openai.com/v1/chat/completions) instead of the base URL
+     - How OpenAI SDK constructs URLs from base_url — why this caused failures
+     - The fix applied and to which files
+
+  4. prices.yaml additions
+     - New model entries added for gpt-5.4 and claude-opus-4-6
+     - Why this was needed
+
+  5. system.yaml: SAFE_GUARD change
+     - Changed from True to False
+     - Reasoning: MCP/autonomous operation cannot handle interactive prompts
+     - Note: a better safety mechanism was designed (policy + adversarial
+       action verification) to replace it — document this design decision
+
+  6. MCP server design decisions
+     - The clarification that UFO2 uses MCP as a CLIENT, not a server
+     - User's intent: UFO2 should BE an MCP server so another agent can call it
+     - Design discussion: subprocess model vs persistent server mode
+     - The "robust wrapper" requirement: agent should be aware of its role,
+       receive structured prompts, understand it is an async subagent for
+       Windows interactions
+     - Decision to use subprocess model for now, with server mode as follow-up
+     - Why FastMCP was chosen; version 2.11.3 specifics
+
+  7. ufo_mcp_server.py — construction and issues
+     - Two tools: windows_task and ufo2_control
+     - How stdin piping (N\n) handles UFO2's continuation prompt
+     - Log parsing approach (NDJSON) for structured results
+     - OmniParser health check (_omniparser_alive)
+     - The FunctionTool-not-callable issue (FastMCP wraps with @mcp.tool()
+       into FunctionTool objects; access via .fn)
+     - UnicodeEncodeError on Windows CP1252 console (checkmark character);
+       fix: PYTHONIOENCODING=utf-8
+     - Verification: tools register correctly, status shows all green,
+       RTX 3090 detected, OmniParser ONLINE
+
+  8. MCP server registration
+     - Attempted to add mcpServers to settings.json — schema rejected it
+     - Discovered: Claude Code does not accept mcpServers in settings.json
+     - Correct location: .mcp.json (project-level) or user-level config
+     - What was created and where
+     - Native alternative: claude mcp add --scope user
+
+  9. OmniParser demo test via Chrome
+     - User had Chrome open; used mcp__Claude_in_Chrome__computer to screenshot
+     - Demo was already showing results from a prior run
+     - Full interactive test (upload + submit + read result) was deferred
+       to post-restart
+
+  10. Config audit findings summary
+      - All config files checked: agents.yaml, agents_openai.yaml,
+        agents_claude.yaml, mcp.yaml, system.yaml, prices.yaml
+      - test_config.py written and run to verify key settings
+      - Final verified state of each config
+
+  11. Unresolved items at session end
+      - UFO2 server mode (persistent process) not yet implemented
+      - Agent role-awareness prompt not yet added to MCP wrapper
+      - Full end-to-end task test (real Windows task via MCP) not yet run
+      - Playwright setup not completed
+      - A2A (Agent-to-Agent protocol) discussion noted but not implemented
+      - Settings profile research (user-curated UFO2 config profiles) pending
+
+  12. Session timeline and context resets
+      - Session ran long enough to hit context limits and was compacted
+      - Note any points where context compression occurred and what was
+        preserved vs potentially lost
+
+TONE AND STYLE
+  - Technical but readable
+  - First-person from the agent's perspective is acceptable
+  - Avoid padding; include detail where it aids understanding
+  - Err on the side of including more rather than less
+
+--------------------------------------------------------------------------------
+END OF ASSIGNMENT 1
+--------------------------------------------------------------------------------
+
+
+
+--------------------------------------------------------------------------------
+ASSIGNMENT 2 — Sysadmin Cheat Sheet / Compact Spec Sheet
+--------------------------------------------------------------------------------
+
+CONTEXT
+  During this session, a partial cheat sheet was discussed in the context of
+  documenting the UFO2 + OmniParser + MCP server stack. That earlier version
+  was incomplete. This assignment supersedes it: produce the definitive, fully
+  reorganized, compact operational reference document.
+
+  This document is distinct from the process journal (Assignment 1) and from
+  full config documentation. It is a fast-reference sheet — dense but
+  scannable. The target reader is someone who needs to go from zero to
+  operational in one read, including wiring it into an agent as an MCP tool.
+
+OUTPUT FILE
+  .\user-notes\cheatsheet.md
+
+FORMAT
+  - Markdown with clear section headers
+  - Compact: use tables, short lines, bullet lists — minimize prose
+  - Scannable: glancing at any section gives immediate operational picture
+  - Dense but not cryptic: enough explanation that nothing requires
+    cross-referencing another document to understand
+
+CONTENT REQUIREMENTS
+  Organize into the following sections (in this order):
+
+  1. OVERVIEW
+     One short paragraph: what the system is, what it does, who calls it,
+     and what it enables. Cover: UFO2 (Windows UI automation agent),
+     OmniParser (visual grounding), MCP server wrapper, and that the system
+     is designed to be called by another agent (Claude Code / Codex) via MCP.
+
+  2. COMPONENTS
+     Compact table or list. For each: name, role/responsibility,
+     process/port if applicable, location on disk. Must include:
+       - UFO2 agent              D:\AI\UFO\
+       - OmniParser server       D:\AI\OmniParser\   port 8010
+       - OmniParser Gradio demo  D:\AI\OmniParser\   port 7861+ (optional/diagnostic)
+       - ufo_mcp_server.py       D:\AI\UFO\ufo_mcp_server.py  (MCP wrapper)
+       - Florence2               visual model, loaded by OmniParser
+       - Windows UIA + pywinauto execution layer, no separate process
+       - Conda envs              D:\AI\conda-envs\ufo
+                                 D:\AI\conda-envs\omniparser
+
+  3. EXTERNAL DEPENDENCIES
+     - OpenAI API        GPT-5.4 for HostAgent + AppAgent reasoning
+     - Anthropic API     Claude, optional/alternate model backend
+     - Windows 10/11     UIA, Win32 -- Linux/Mac not supported
+     - CUDA / RTX GPU    Florence2 and OmniParser require GPU (RTX 3090 in use)
+     - Conda             environment management
+     - HuggingFace Hub   Florence2 + OmniParser icon detector model weights
+     - Bing Search API   RAG online search (when enabled)
+     - FastMCP 2.11.3    MCP server framework
+
+  4. COMPONENT INTERACTION MODEL
+     Concise flow (diagram or prose) of how components talk to each other:
+
+       Caller (Claude Code / Codex)
+         -> MCP protocol (stdio, JSON-RPC)
+         -> ufo_mcp_server.py
+         -> subprocess: python -m ufo --task "..."
+         -> UFO2 agent loop:
+               HostAgent (GPT-5.4)      plans app-level steps
+               AppAgent (GPT-5.4)       plans per-app actions
+               OmniParser (HTTP :8010)  visual grounding fallback
+               Windows UIA (in-proc)    primary control resolution
+               pywinauto / Win32        executes clicks, keystrokes
+         -> UFO2 exits; writes NDJSON logs to .\logs\
+         -> ufo_mcp_server.py parses logs -> structured result -> MCP caller
+
+     Important distinction: UFO2 also uses MCP internally as a CLIENT
+     (calls external MCP tool servers via config\ufo\mcp.yaml). This is
+     completely separate from the MCP server wrapper described here.
+
+  5. KEY CONFIGURATION FILES
+     Table: path -> what it controls -> critical values.
+
+     .\config\ufo\agents.yaml
+       Model selection, API_BASE, API_KEY for all agents.
+       CRITICAL: API_BASE must be https://api.openai.com/v1/ (base only).
+       OpenAI SDK appends endpoint paths — passing the full
+       /chat/completions URL causes the SDK to build malformed URLs.
+
+     .\config\ufo\agents_openai.yaml
+       OpenAI-specific model config (overrides / supplements agents.yaml).
+
+     .\config\ufo\agents_claude.yaml
+       Claude-specific model config. No API_BASE needed (different SDK).
+
+     .\config\ufo\system.yaml
+       SAFE_GUARD, MAX_ROUND, CONTROL_BACKEND, OMNIPARSER endpoint, etc.
+       SAFE_GUARD: False required for MCP/non-interactive operation.
+
+     .\config\ufo\mcp.yaml
+       UFO2 outbound MCP client config (tools UFO2 can call as a client).
+       LinuxAgent BashExecutor is on port 8012 -- NOT 8010.
+       Port 8010 is reserved for OmniParser. This was a bug fixed this session.
+
+     .\config\ufo\prices.yaml
+       Token cost tracking per model. Must include any model in use.
+       Added this session: gpt-5.4 and claude-opus-4-6.
+
+     D:\AI\OmniParser\gradio_demo.py
+       Demo port logic: auto-detects free port starting at 7861.
+       Override via env var: OMNIPARSER_DEMO_PORT.
+
+     D:\Claude\.mcp.json
+       MCP server registration for Claude Code (project-level).
+
+     C:\Users\Denis\.claude\mcp.json
+       User-level MCP registration (global, all projects).
+
+     Critical conventions (must know):
+       - PYTHONIOENCODING=utf-8 must be set before running ufo_mcp_server.py.
+         Windows CP1252 console cannot encode Unicode output from UFO2.
+       - OmniParser is always on port 8010. Do not change without updating
+         system.yaml OMNIPARSER endpoint and any health check references.
+       - SAFE_GUARD: False is mandatory for unattended/MCP-driven operation.
+
+  6. LOG FILES
+     Path                              Contents                  Written when
+     .\logs\<task_id>\*.ndjson         structured action log     each task run
+     .\logs\<task_id>\*.png            per-step screenshots      each task run
+     .\logs\<task_id>\response*.log    raw LLM responses         each task run
+     D:\AI\OmniParser\logs\            OmniParser server logs    server runtime
+
+     .\logs\ is excluded from git (.gitignore, Assignment 0).
+     ufo_mcp_server.py reads NDJSON logs post-task to build MCP response.
+
+  7. STARTUP / SHUTDOWN ORDER
+     Order matters -- later steps depend on earlier ones.
+
+     STARTUP:
+       1. OmniParser server   D:\AI\OmniParser\start_server.bat
+                              Health: GET http://localhost:8010/health
+       2. UFO2 MCP server     D:\AI\UFO\start_ufo_mcp.bat
+                              (activates conda env ufo; starts FastMCP stdio)
+       3. Gradio demo         D:\AI\OmniParser\start_demo.bat  [OPTIONAL]
+                              Diagnostic UI only; not needed for operation.
+
+     SHUTDOWN (reverse):
+       1. Gradio demo         Ctrl+C or kill python process (if running)
+       2. UFO2 MCP server     Ctrl+C or kill python process
+       3. OmniParser server   Ctrl+C or kill uvicorn process
+
+     PowerShell management scripts (full spec in Assignment 3):
+       .\scripts\Start-UFO2Stack.ps1
+       .\scripts\Stop-UFO2Stack.ps1
+       .\scripts\Restart-UFO2Stack.ps1
+       .\scripts\Get-UFO2Status.ps1
+       .\scripts\Invoke-UFO2Cleanup.ps1
+
+     If Assignment 3 is not yet complete, use .bat files above and manage
+     processes manually via Task Manager or taskkill /IM python.exe /F.
+
+  8. MCP TOOL CONFIGURATION
+     Registration option A — project-level (.mcp.json in project root):
+       {
+         "mcpServers": {
+           "ufo2": {
+             "type": "stdio",
+             "command": "cmd",
+             "args": ["/c", "D:\\AI\\UFO\\start_ufo_mcp.bat"]
+           }
+         }
+       }
+
+     Registration option B — user-level (global):
+       claude mcp add ufo2 --transport stdio --scope user ^
+         "cmd" "/c" "D:\AI\UFO\start_ufo_mcp.bat"
+
+     Available tools:
+
+       windows_task(request, task_id?, timeout?)
+         Run any Windows task in natural language.
+         Returns: status, summary, actions taken, round count, errors.
+         Requires OmniParser running on port 8010 first.
+         Example: windows_task("open Notepad and type Hello World")
+
+       ufo2_control(command, task_id?)
+         Inspect and manage the UFO2 stack.
+         status  -- Python env, config files, OmniParser health, GPU
+         logs    -- recent task log content (specify task_id to target one)
+         config  -- dump current effective configuration values
+
+     Prerequisites before calling windows_task:
+       - OmniParser server running and healthy (port 8010)
+       - OPENAI_API_KEY set in environment
+       - UFO2 MCP server process running (start_ufo_mcp.bat active)
+
+     Quick health check:
+       ufo2_control("status")   -> should return all-green + OmniParser ONLINE
+
+--------------------------------------------------------------------------------
+END OF ASSIGNMENT 2
+--------------------------------------------------------------------------------
+
+
+--------------------------------------------------------------------------------
+ASSIGNMENT 3 — PowerShell Management Scripts
+--------------------------------------------------------------------------------
+
+CONTEXT
+  The UFO2 stack consists of multiple components that must start and stop in a
+  specific order, run in the correct conda environments, and be verified as
+  healthy before being considered operational. Manual management via .bat files
+  is insufficient for reliable operation. This assignment produces a complete
+  suite of PowerShell management scripts that are robust, graceful, and useful
+  for both automated (MCP-driven) and interactive (operator) use.
+
+  These scripts are referenced in Assignment 2 (cheat sheet) as the primary
+  management interface for the stack. They must work correctly even before
+  Assignment 2's cheat sheet is complete, and must stand alone as executable
+  tools.
+
+OUTPUT LOCATION
+  All scripts in: .\scripts\
+    .\scripts\Start-UFO2Stack.ps1
+    .\scripts\Stop-UFO2Stack.ps1
+    .\scripts\Restart-UFO2Stack.ps1
+    .\scripts\Get-UFO2Status.ps1
+    .\scripts\Invoke-UFO2Cleanup.ps1
+
+STACK COMPONENTS (for reference across all scripts)
+  Component         Process             Port   Start script
+  OmniParser server python (uvicorn)    8010   D:\AI\OmniParser\start_server.bat
+  UFO2 MCP server   python (FastMCP)    none   D:\AI\UFO\start_ufo_mcp.bat
+  Gradio demo       python (gradio)     7861+  D:\AI\OmniParser\start_demo.bat
+
+  Health check URLs:
+    OmniParser server: http://localhost:8010/health
+    UFO2 MCP server:   stdio only -- no HTTP health endpoint; check process
+
+  Conda environments:
+    OmniParser: D:\AI\conda-envs\omniparser
+    UFO2:       D:\AI\conda-envs\ufo
+
+  Artifact archive root (from Assignment 0): D:\AI\UFO-artifacts\
+  Timestamp format used throughout:          MM-dd-yy hh:mm:sstt
+  Example:                                   03-26-26 02:14:07PM
+
+SHARED REQUIREMENTS (apply to all five scripts)
+  - Distinguish between four system states:
+      RUNNING    all expected processes up, ports listening, health checks pass
+      STOPPED    no relevant processes, no leftover artifacts
+      PARTIAL    some components up, others missing
+      DEGRADED   processes present but unhealthy, or dirty-shutdown artifacts
+                 detected (lock files, incomplete log entries, wrong port state)
+  - Verify state using all of the following where applicable:
+      process presence (Get-Process, tasklist)
+      listening ports (netstat / Test-NetConnection)
+      log file timestamps and content (where meaningful)
+      HTTP health checks for components that support them
+  - Support both interactive and non-interactive (parameter-enforced) modes.
+    Non-interactive mode must be fully unattended -- no Read-Host prompts.
+    Provide a -Force or -NonInteractive switch where prompts would otherwise occur.
+  - Output must be structured and human-readable.
+    Use consistent visual markers: [OK], [WARN], [FAIL], [INFO].
+  - Scripts must be idempotent where practical (safe to run multiple times).
+  - All scripts require no elevation unless a specific operation demands it;
+    document clearly if elevation is needed for any step.
+
+A. Start-UFO2Stack.ps1
+  Parameters:
+    -Force           skip all interactive prompts; auto-stop/cleanup if needed
+    -SkipCleanup     if environment is dirty, stop but do not run cleanup
+    -GradioDemo      also start the optional Gradio demo after main stack
+    -HealthTimeout   seconds to wait for health checks (default: 120)
+
+  Behavior:
+    1. Call Get-UFO2Status.ps1 internally. Evaluate the result.
+    2. If state is RUNNING: report already running, exit cleanly.
+    3. If state is PARTIAL or DEGRADED:
+         - Describe what is wrong.
+         - If interactive: prompt operator to stop/cleanup before proceeding.
+         - If -Force: automatically invoke Stop-UFO2Stack.ps1 -Force,
+           then Invoke-UFO2Cleanup.ps1 -Force (unless -SkipCleanup).
+    4. If state is STOPPED or after cleanup confirms clean state:
+         - Start OmniParser server via start_server.bat.
+           Monitor startup output; watch for uvicorn "Application startup complete".
+         - Poll http://localhost:8010/health with retry loop.
+           Retry interval: 3s. Max wait: -HealthTimeout seconds.
+           Do not fail immediately -- OmniParser loads GPU models and is slow.
+         - Once OmniParser is healthy, start UFO2 MCP server via start_ufo_mcp.bat.
+           Monitor for FastMCP startup confirmation in output.
+         - If -GradioDemo: start Gradio demo via start_demo.bat.
+    5. Post-startup verification:
+         - Confirm OmniParser process exists and port 8010 is listening.
+         - Confirm UFO2 MCP server process exists.
+         - Confirm OmniParser health check returns HTTP 200.
+         - Check most recent log file mtime in .\logs\ if any tasks have run.
+    6. Output clear SUCCESS or FAILURE summary with component states.
+       On failure: show which component failed and suggest next steps.
+
+B. Stop-UFO2Stack.ps1
+  Parameters:
+    -Force           skip interactive prompts; proceed with full shutdown
+    -IncludeGradio   also stop Gradio demo if running (default: true)
+    -GracePeriod     seconds to wait for graceful shutdown before forcing (default: 10)
+
+  Behavior:
+    1. Call Get-UFO2Status.ps1 internally. Evaluate result.
+    2. If state is STOPPED: report nothing to stop, exit cleanly.
+    3. For each running component (in reverse startup order):
+         Gradio demo (if running and -IncludeGradio):
+           - Send graceful termination signal.
+           - Wait up to -GracePeriod seconds.
+           - If still alive: force-kill.
+         UFO2 MCP server:
+           - Send graceful termination signal.
+           - Wait up to -GracePeriod seconds.
+           - If still alive or state is DEGRADED: force-kill (taskkill /F).
+         OmniParser server:
+           - Send graceful termination signal.
+           - Wait up to -GracePeriod seconds.
+           - If still alive or state is DEGRADED: force-kill (taskkill /F).
+    4. Verify shutdown:
+         - Confirm no relevant python processes remain for each component.
+         - Confirm port 8010 is no longer listening.
+    5. Scan for residual artifacts that may warrant cleanup:
+         - Orphaned lock files, incomplete log entries, temp files.
+         - If found: report them and recommend running Invoke-UFO2Cleanup.ps1.
+    6. Output clear confirmation: all components stopped, or list what remains.
+
+C. Restart-UFO2Stack.ps1
+  Parameters:
+    -Force           pass through to stop and start
+    -CleanBefore     run Invoke-UFO2Cleanup.ps1 between stop and start
+    -GradioDemo      pass through to Start-UFO2Stack.ps1
+    -HealthTimeout   pass through to Start-UFO2Stack.ps1
+
+  Behavior:
+    1. Invoke Stop-UFO2Stack.ps1 with -Force (always non-interactive for restart).
+    2. Verify stop completed successfully. Abort if stop failed.
+    3. If -CleanBefore: invoke Invoke-UFO2Cleanup.ps1 -Force.
+    4. Invoke Start-UFO2Stack.ps1, passing through relevant parameters.
+    5. Report final state (success/failure) from Start result.
+    Note: Restart must handle degraded starting state correctly.
+    It must not assume the system was healthy before the restart was called.
+
+D. Get-UFO2Status.ps1
+  Parameters:
+    -Quiet           output machine-readable summary only (for use by other scripts)
+    -Json            output full status as JSON (for programmatic consumption)
+
+  Behavior:
+    1. For each component, collect and report:
+         OmniParser server:
+           - Process running? (python w/ uvicorn)
+           - Port 8010 listening?
+           - HTTP health check: GET http://localhost:8010/health -> status + body
+           - Most recent log file path + mtime (if applicable)
+         UFO2 MCP server:
+           - Process running? (python w/ ufo_mcp_server.py)
+           - No HTTP endpoint; check process only + start_ufo_mcp.bat ancestry
+           - Most recent task log dir in .\logs\ + mtime
+         Gradio demo (optional component):
+           - Process running?
+           - Port 7861 (or detected port) listening?
+           - Report as OPTIONAL -- not a failure if absent
+    2. Determine overall system state:
+         RUNNING    all required components healthy
+         PARTIAL    some required components up, others missing
+         DEGRADED   processes exist but health checks fail, or artifact anomalies
+         STOPPED    no required components running
+    3. Report useful follow-up information:
+         - OmniParser server URL: http://localhost:8010
+         - OmniParser health:     http://localhost:8010/health
+         - Gradio demo URL:       http://localhost:<detected_port> (if running)
+         - Log directory:         .\logs\
+         - Relevant commands for manual follow-up
+    4. If -Quiet: emit a single structured line: STATUS=<state> [component states]
+    5. If -Json: emit full JSON object with per-component detail + overall state.
+
+E. Invoke-UFO2Cleanup.ps1
+  Parameters:
+    -Force           skip interactive prompts; proceed automatically
+    -DryRun          report what would be moved; touch nothing
+    -IncludeLogs     also move runtime log files (default: false -- logs are kept)
+
+  Behavior:
+    1. Call Get-UFO2Status.ps1 internally to determine current runtime state.
+    2. Define the artifact archive destination (integrates with Assignment 0):
+         D:\AI\UFO-artifacts\<timestamp>\
+         Timestamp format: MM-dd-yy hh:mm:sstt  (e.g. "03-26-26 12:05:43AM")
+         This is the same artifact tree used by .\scripts\export-artifacts.ps1.
+    3. Build the list of cleanup targets -- artifacts beyond what a fully
+       successful clean start/stop cycle would leave behind. Includes:
+         - __pycache__\ directories throughout the repo
+         - *.pyc, *.pyo compiled bytecode files
+         - *.tmp, *.temp, ~* scratch files
+         - Orphaned lock files (*.lock) not owned by a running process
+         - Crash/dump files: *.dmp, *.mdmp, *.stackdump
+         - Partial download files: *.part, *.incomplete
+         - Stale vectorstore index artifacts (FAISS indices auto-regenerated)
+         - Any other files matching the .gitignore patterns from Assignment 0
+           that are NOT standard operating log files
+         - If -IncludeLogs: also include .\logs\ contents
+    4. Runtime-aware filtering:
+         If a component is currently RUNNING, exclude from cleanup targets
+         any files that could affect its operation. Specifically:
+           - Do not move any file that is open/locked by a running process.
+           - Do not move active log files being written to.
+           - Do not move any config or model files in use.
+         For each excluded file: report it as SKIPPED with reason.
+    5. Move (never delete) all targets to the timestamped archive destination,
+       preserving relative directory structure exactly (same convention as
+       export-artifacts.ps1 from Assignment 0).
+    6. If -DryRun: report what would be moved; touch nothing; label output clearly.
+    7. Report:
+         - Files moved and their destination paths
+         - Files skipped and why
+         - Total count and size
+         - Final post-cleanup state assessment
+    8. Post-cleanup state should approximate:
+         "fresh install after install artifacts cleaned, standard log files intact"
+       The system must be fully operational after cleanup (if it was before).
+
+  IMPORTANT: Do not delete any file at any point. All disposals are moves
+  into the artifact archive. This preserves everything for later analysis.
+
+--------------------------------------------------------------------------------
+END OF ASSIGNMENT 3
+--------------------------------------------------------------------------------
+
+
+--------------------------------------------------------------------------------
+ASSIGNMENT 4 — Containerization / Portability Research
+--------------------------------------------------------------------------------
+
+CONTEXT
+  The UFO2 stack has deep native Windows dependencies that make standard
+  containerization non-trivial. Before any portability work is considered,
+  a thorough research pass is required to determine what is actually viable.
+  This is a research-only assignment. Do not implement, migrate, or package
+  anything. Deliver a report.
+
+  The system being evaluated consists of:
+    - UFO2 agent (Python, pywinauto, Windows UIA / Win32 API calls)
+    - OmniParser server (Python, FastAPI/uvicorn, Florence2, CUDA/GPU required)
+    - ufo_mcp_server.py (FastMCP, stdio transport, spawns subprocesses)
+    - Conda environments (D:\AI\conda-envs\ufo, D:\AI\conda-envs\omniparser)
+    - GPU dependency: RTX 3090, CUDA -- Florence2 will not run on CPU at speed
+    - Windows-only: pywinauto, UIA, Win32 API are Windows-exclusive
+    - Inter-process communication: HTTP (port 8010), stdio, subprocess spawning
+    - The system must be able to control the Windows desktop (clicks, keystrokes,
+      window focus, etc.) -- this requires access to the host OS GUI layer
+
+  This system is fundamentally a native Windows desktop automation agent.
+  Any containerization solution must preserve all of the above capabilities.
+
+OUTPUT FILE
+  .\user-notes\containerization_research.md
+
+FORMAT
+  - Markdown, structured with clear headers
+  - Each candidate solution gets its own section
+  - Use a consistent evaluation rubric across all options (see below)
+  - End with a recommendation section
+
+RESEARCH QUESTIONS
+  The report must answer all of the following:
+
+  1. Is it realistically possible to make this system portable while preserving
+     full functionality (GPU, Windows UIA, desktop interaction, subprocess
+     spawning, conda environments, inter-process HTTP)?
+
+  2. What Windows-appropriate solutions exist in the following categories:
+       a) Windows containers (Docker for Windows, Windows Server Containers,
+          Hyper-V isolated containers)
+       b) Application virtualization / sandboxing
+          (MSIX, App-V, Cameyo, Turbo.net / Spoon, VMware ThinApp)
+       c) VM-based portability
+          (Vagrant + VirtualBox/Hyper-V, pre-configured VM images)
+       d) Self-contained package / portable app frameworks
+          (WinGet bundles, Scoop, MSIX with external content, custom launchers)
+       e) Any other relevant category not listed above
+
+  3. For each candidate: can it realistically host this specific system with
+     full GPU passthrough, Windows UIA access, and desktop GUI interaction?
+
+  4. Which options are robust enough to actually trust in production use,
+     as opposed to being theoretically possible or demo-only?
+
+EVALUATION RUBRIC
+  Score each candidate on all of the following dimensions:
+
+    GPU passthrough       Can it pass through CUDA/RTX hardware to the workload?
+    Windows UIA access    Can Python code inside call Windows UIA / Win32 APIs?
+    Desktop GUI control   Can the agent click, type, focus windows on the host?
+    Subprocess spawning   Can processes spawn child processes freely?
+    Conda compatibility   Can conda environments be bundled or mapped in?
+    Portability           How portable is the resulting artifact across machines?
+    Startup automation    Can it self-start the full stack reliably?
+    Operational trust     Is it used in production by real organizations?
+    Operational overhead  How much management/maintenance burden does it add?
+
+  For each dimension use: FULL / PARTIAL / LIMITED / NONE / UNKNOWN
+  Include a brief explanation for non-obvious ratings.
+
+DISTINCTION REQUIRED
+  Clearly separate each option into one of three tiers:
+    THEORETICALLY POSSIBLE   could work in principle; significant caveats
+    PRACTICALLY WORKABLE     can be made to work with reasonable effort
+    PRODUCTION-TRUSTWORTHY   used in real production; reliable; well-supported
+
+RECOMMENDATION SECTION
+  After evaluating all options:
+  - State clearly whether any option is robust enough to recommend for this
+    specific system as it currently exists.
+  - If yes: identify the top candidate(s) and summarize the implementation path.
+  - If no: explain what the blockers are and what would need to change before
+    containerization becomes viable.
+  - If the answer is "VM is the only real option": say so directly and explain
+    what a well-configured VM image approach would look like for this stack.
+
+--------------------------------------------------------------------------------
+END OF ASSIGNMENT 4
+--------------------------------------------------------------------------------
+
+
+--------------------------------------------------------------------------------
+ASSIGNMENT 5 — UFO2 MCP Server Redesign (Role-Aware, Session-Connected)
+--------------------------------------------------------------------------------
+
+CONTEXT
+  The current MCP server implementation (ufo_mcp_server.py, built this session)
+  is a functional but thin wrapper: it spawns UFO2 as a subprocess per task,
+  pipes N\n to auto-answer the continuation prompt, and parses log files for
+  results. It has no session awareness, no role communication, and no persistent
+  connection to a running UFO2 instance.
+
+  This assignment defines the redesign. The new MCP server is the authoritative
+  control layer through which another agent (Claude Code, Codex, etc.) drives
+  UFO2 as a subordinate, role-aware, async Windows interaction subagent.
+
+  IMPORTANT: Before implementation begins, a preliminary research/discussion
+  pass is required (documented in this assignment). The research questions must
+  be answered before the implementation spec is treated as final, because UFO2's
+  session model has direct implications for how the connection and declaration
+  must be structured.
+
+OUTPUT
+  Primary implementation file: .\ufo_mcp_server.py  (full replacement)
+  Supporting files as needed:  .\ufo_session.py, .\ufo_prompts.py, etc.
+  Language: Python (required)
+
+PRELIMINARY RESEARCH REQUIRED BEFORE IMPLEMENTATION
+  The following questions must be answered first, using UFO2 source code
+  inspection and any available documentation:
+
+  1. UFO2 SESSION MODEL
+     - Does UFO2 maintain any persistent session state between task invocations,
+       or is each invocation entirely stateless?
+     - Where does UFO2 expect its input? (stdin, CLI args, HTTP, socket?)
+     - Can UFO2 be left running between tasks (persistent process), or does it
+       exit after each task by design?
+     - When UFO2 is started in --mode normal vs --mode follower vs --mode server:
+       what is the expected I/O contract for each mode?
+     - Does UFO2 have any concept of a "session prompt" or initialization message
+       that is processed before the first task?
+     - How does UFO2's continuation prompt work? (the "more requests?" prompt
+       that the current implementation bypasses with N\n) -- is there a cleaner
+       way to keep it alive between tasks without hacking stdin?
+
+  2. STDIO COMPATIBILITY
+     - If UFO2 is run in a mode that accepts stdin-based input, can a Python
+       parent process write prompts to its stdin and read structured output
+       from its stdout reliably?
+     - Are there known issues with buffering, encoding, or blocking reads in
+       UFO2's I/O that would affect a stdio-based controller?
+     - Does UFO2 flush output promptly, or does it batch? This affects whether
+       the MCP server can reliably detect task completion.
+
+  3. CONTEXT AND MEMORY PERSISTENCE
+     - UFO2 has an Experience Memory (RAG over past task trajectories). Does
+       this persist across invocations automatically, or only when a task
+       completes with SAVE_EXPERIENCE enabled?
+     - Is there any per-session context (conversation history, app state) that
+       survives between tasks within the same process lifetime?
+     - If UFO2 exits between tasks, is all session context lost? Or does the
+       RAG experience store persist on disk and reload on next start?
+
+  These questions must be answered and their implications noted before writing
+  the implementation. The answers determine whether a persistent-process model
+  is viable, and how the introductory declaration must be delivered.
+
+IMPLEMENTATION REQUIREMENTS
+
+  Language: Python (required).
+
+  1. STARTUP BEHAVIOR
+     On MCP server startup:
+       a) Check whether the UFO2 stack is already running and ready.
+          Use the same health signals as Get-UFO2Status.ps1 (Assignment 3):
+          OmniParser port 8010 responding, UFO2 process present.
+       b) If not ready: invoke Start-UFO2Stack.ps1 -Force (non-interactive).
+          Capture and monitor output. Surface any startup errors to the caller
+          via structured MCP error responses -- do not silently swallow them.
+       c) Do not proceed until availability check passes.
+          Implement a retry loop with configurable timeout and backoff.
+          Distinguish between "still loading" and "failed to start".
+
+  2. CONNECTION TO UFO2
+     After availability is confirmed:
+       a) Connect to UFO2 using the most compatible stdio-capable method
+          (determined by preliminary research above).
+       b) The connection must support bidirectional communication with zero
+          encoding or buffering issues. Use utf-8 throughout.
+       c) If UFO2 requires a persistent process: manage process lifecycle
+          within the MCP server (start, monitor, restart on crash).
+       d) If UFO2 is inherently per-task: document why and adapt the session
+          initialization flow accordingly (e.g. deliver declaration per task).
+
+  3. SESSION INITIALIZATION — INTRODUCTORY DECLARATION
+     When a new session begins (first task after startup, or after reconnect):
+       a) Deliver an introductory declaration to the UFO2 agent before any
+          task is submitted.
+       b) The declaration is not a system prompt in the LLM sense. It is an
+          explicit, natural-language initialization message that UFO2 processes
+          as part of its context.
+       c) The declaration must cover (preliminary recommendations -- refine
+          based on research findings):
+
+          ROLE STATEMENT
+            "You are operating as an asynchronous Windows interaction subagent.
+             You have been invoked by an MCP server, which was itself called as
+             a tool by another AI agent. Your role is to execute Windows desktop
+             tasks on that agent's behalf."
+
+          OPERATIONAL CONTEXT
+            "The agent that invoked you does not have direct access to the
+             Windows desktop. You are its hands. You will receive task
+             descriptions in natural language. Your job is to execute them
+             reliably, verify the outcome, and report back with a structured
+             result."
+
+          COMMUNICATION CONTRACT
+            "When a task is complete, report: what you did, what the outcome
+             was, whether it succeeded, and any relevant observations. If you
+             encounter ambiguity or a decision point that requires human
+             judgment, say so explicitly rather than guessing. Do not ask
+             clarifying questions for clearly specified tasks."
+
+          BEHAVIORAL GUIDANCE
+            "Be methodical. Verify each action before moving to the next.
+             Prefer UIA-accessible controls over visual fallback where possible.
+             If an action fails, try an alternative approach before giving up.
+             Do not take destructive actions unless explicitly instructed.
+             Check your actions against the original request before executing
+             anything that cannot be undone."
+
+          SECURITY POLICY (inline, natural language)
+            "Before executing any task, verify that it does not violate the
+             following policy: [policy text to be defined -- see Assignment 6].
+             If a task appears to violate policy, refuse it and explain why.
+             As a secondary check: before each individual action, verify that
+             the action is consistent with the original request. If an action
+             does not match what was asked, do not execute it."
+
+       d) The declaration should be stored in a separate file (ufo_prompts.py
+          or similar) so it can be updated without touching server logic.
+       e) The declaration is delivered once per session. It is not re-sent
+          with every task. Track session state to enforce this.
+
+  4. TASK SUBMISSION
+     For each incoming windows_task() call:
+       a) Submit the task to the connected UFO2 agent.
+       b) Monitor execution -- watch for completion, errors, or timeout.
+       c) Parse the result from UFO2's output or log files (whichever is
+          more reliable given the session model determined by research).
+       d) Return a structured MCP response: status, summary, actions, errors.
+
+  5. ERROR HANDLING
+     - Startup failure: return structured error; do not leave stack half-started.
+     - UFO2 crash mid-task: detect, attempt restart, report to caller.
+     - Task timeout: configurable; return timeout error with partial state.
+     - Policy violation detected by UFO2: surface explicitly in response.
+     - Encoding errors: PYTHONIOENCODING=utf-8 must be enforced in all subprocs.
+
+  6. TOOLS EXPOSED VIA MCP (revised from current implementation)
+     Keep the same two-tool structure but expand semantics:
+
+       windows_task(request, context?, task_id?, timeout?)
+         - request:  natural language task description
+         - context:  optional additional context from the calling agent
+                     (e.g. "user previously had Notepad open", app state hints)
+         - task_id:  optional caller-provided ID for tracking
+         - timeout:  seconds before declaring task failed (default: 300)
+
+       ufo2_control(command, task_id?)
+         - status:   full stack health (process, port, health checks, GPU)
+         - logs:     task log content (all recent, or specific task_id)
+         - config:   effective configuration dump
+         - session:  current session state (connected, declaration sent, etc.)
+         - restart:  trigger a full stack restart (calls Start-UFO2Stack.ps1)
+
+NOTES FOR IMPLEMENTER
+  - The preliminary research section above must be completed before writing
+    any connection or session-init code. The I/O contract with UFO2 is not
+    fully known until that research is done.
+  - The security policy referenced in the declaration (Assignment 6) may not
+    be complete when this is implemented. Use a placeholder that clearly marks
+    where the policy text is injected, so it can be filled in later without
+    re-architecting the declaration.
+  - The current ufo_mcp_server.py should be preserved as a reference but
+    replaced, not patched. The architecture is different enough that patching
+    would produce worse results than a clean rewrite.
+  - All session state must survive a UFO2 crash and reconnect gracefully.
+    The MCP server itself should not crash if UFO2 does.
+
+--------------------------------------------------------------------------------
+END OF ASSIGNMENT 5
+--------------------------------------------------------------------------------
+
+
+--------------------------------------------------------------------------------
+ASSIGNMENT 6 -- Security Policy Definition + QA Pair FAISS Filtering
+--------------------------------------------------------------------------------
+
+PART A: SECURITY POLICY
+
+OBJECTIVE
+  Write the natural-language security policy that is injected into the UFO2
+  session declaration (Assignment 5). This policy is the first of the two-stage
+  safety check: (1) does the request violate policy? (2) does each action match
+  the original request?
+
+POLICY FILE
+  .\customization\security_policy.txt
+  (Plain text, human-readable. Loaded by the MCP server and injected into the
+   session declaration at the placeholder defined in Assignment 5.)
+
+POLICY REQUIREMENTS
+  The policy must be written in clear, unambiguous natural language that an LLM
+  can reason against. It must cover:
+
+  1. DESTRUCTIVE ACTIONS
+     - No deletion of files or directories unless explicitly named in the request.
+     - No uninstalling of software unless the software is explicitly named.
+     - No formatting or wiping of drives under any circumstances.
+     - No modification of system files, registry, or security settings.
+     - No termination of processes unless explicitly requested and named.
+
+  2. DATA EXFILTRATION
+     - Do not read, copy, transmit, or expose files containing credentials,
+       API keys, passwords, or private keys.
+     - Do not send any data to external services or URLs not explicitly named
+       in the request.
+     - Do not read browser-saved passwords, autofill data, or stored tokens.
+
+  3. IRREVERSIBLE OPERATIONS
+     - Before any action that cannot be undone: verify it matches the request.
+     - If uncertain whether an action is reversible: treat it as irreversible.
+
+  4. SCOPE CONTAINMENT
+     - Work only within the applications and files explicitly mentioned.
+     - Do not open, read, or modify files not related to the task.
+     - Do not install software not explicitly requested.
+
+  5. NETWORK OPERATIONS
+     - Do not initiate network connections not required for the stated task.
+     - Do not submit forms or post data to external URLs without explicit
+       instruction.
+
+  POLICY VERSIONING
+  Include a version header and date in the file so the MCP server can log which
+  policy version was active for each task.
+
+PART B: QA PAIR FAISS FILTERING
+
+BACKGROUND
+  UFO2 loads QA pairs from QA_PAIR_FILE into the agent prompt for context.
+  Currently it loads the last N lines (QA_PAIR_NUM=30) with no relevance
+  filtering -- this is wasteful and injects irrelevant context.
+
+OBJECTIVE
+  Build a lightweight FAISS-based filter that prepares a per-request subset of
+  QA pairs, selecting only the ones most relevant to the incoming task.
+
+IMPLEMENTATION LOCATION
+  .\ufo_qa_filter.py   (standalone module, imported by ufo_mcp_server.py)
+
+REQUIREMENTS
+  1. INDEX BUILDING
+     - On startup (or on first call), embed all QA pairs from QA_PAIR_FILE
+       using sentence embeddings (all-MiniLM-L6-v2 already present).
+     - Build a FAISS flat index (IndexFlatL2 or IndexFlatIP).
+     - Cache the index in memory. Rebuild when QA_PAIR_FILE mtime changes.
+
+  2. QUERY
+     - Given the incoming task string, embed it with the same model.
+     - Retrieve top-K most similar QA pairs (K = QA_PAIR_NUM = 30).
+     - Return as a list of dicts matching the existing QA pair format.
+
+  3. INTEGRATION
+     - ufo_mcp_server.py calls ufo_qa_filter.get_relevant_qa(task, k=30)
+       before submitting the task to UFO2.
+     - The filtered QA pairs are written to a temp file that overrides
+       QA_PAIR_FILE for the duration of the task.
+     - Fallback: if FAISS is not installed or index build fails, fall back to
+       existing last-N behavior with a warning.
+
+  4. COST AWARENESS
+     - Embedding model runs locally (no API calls).
+     - FAISS is CPU-only (no GPU required at this scale).
+     - Index rebuild must be fast enough not to block task submission.
+
+  5. DEPENDENCIES
+     - faiss-cpu (pip install faiss-cpu)
+     - sentence-transformers (already present in ufo conda env)
+
+--------------------------------------------------------------------------------
+END OF ASSIGNMENT 6
+--------------------------------------------------------------------------------
+
+
+--------------------------------------------------------------------------------
+ASSIGNMENT 8 -- Playwright Testing Setup
+--------------------------------------------------------------------------------
+
+OBJECTIVE
+  Install Playwright MCP and write automated tests for the UFO2 stack.
+
+PART A: INSTALLATION
+  Install the official Microsoft Playwright MCP server:
+    claude mcp add --transport stdio playwright -- npx -y @playwright/mcp@latest
+
+  Prerequisites: Node.js 18+
+    Verify: node --version
+    Install if missing: winget install OpenJS.NodeJS.LTS
+
+  Verify: claude mcp list -- should show "playwright"
+
+PART B: UFO2 STACK TESTS
+
+  Test file: .\tests\playwright\test_ufo2_stack.py (or .js)
+
+  Tests to write:
+
+  1. OmniParser Gradio Demo (http://localhost:7861)
+     - Navigate to the demo
+     - Upload a test screenshot (capture desktop)
+     - Click Submit
+     - Verify Image Output panel populates
+     - Verify Parsed screen elements panel contains output
+     - Assert at least one detected element is returned
+
+  2. OmniParser Health Endpoint (http://localhost:8010/health)
+     - Navigate to endpoint
+     - Verify HTTP 200
+     - Verify response contains expected health fields
+
+  REQUIREMENTS
+  - Must run non-interactively (headless acceptable)
+  - Must handle stack-not-running gracefully (skip, not fail)
+  - Diagnostic only -- verifies stack health, not code correctness
+
+--------------------------------------------------------------------------------
+END OF ASSIGNMENT 8
+--------------------------------------------------------------------------------
+

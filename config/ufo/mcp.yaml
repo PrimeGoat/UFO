@@ -142,7 +142,7 @@ LinuxAgent:
       - namespace: BashExecutor
         type: http
         host: "localhost"
-        port: 8010
+        port: 8012  # NOTE: 8010 is used by OmniParser — do not use 8010 here
         path: "/mcp"
         reset: false
 

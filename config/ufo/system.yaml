@@ -1,34 +1,35 @@
 # UFO System Configuration
 
 # LLM Parameters
-MAX_TOKENS: 2000  # The max token limit for the response completion
-MAX_RETRY: 20  # The max retry limit for the response completion
-TEMPERATURE: 0.0  # The temperature of the model: the lower the value, the more consistent
-TOP_P: 0.0  # The top_p of the model: the lower the value, the more conservative
-TIMEOUT: 60  # The call timeout(s), default is 1 mins
+MAX_TOKENS: 4000  # Raised: complex tasks need more reasoning room
+MAX_RETRY: 5  # Lowered: 20 retries on API failure wastes time; fail fast and let MCP retry
+TEMPERATURE: 0.0  # Keep deterministic — consistency > creativity for automation
+TOP_P: 0.0  # Keep conservative
+TIMEOUT: 120  # Raised: vision+planning calls can be slow on complex screens
 
 # Control Backend
-CONTROL_BACKEND: ["uia"]  # The backend for control action: uia, omniparser
+CONTROL_BACKEND: ["uia"]  # UIA only. OmniParser is NOT a true fallback — with both listed it runs on every step. Add "omniparser" only for specific apps that need it (games, Electron, custom-drawn UIs)
 IOU_THRESHOLD_FOR_MERGE: 0.1  # The iou threshold for merging the boxes between controls
 
 # Execution Limits
-MAX_STEP: 50  # The max step limit for completing the user request
-MAX_ROUND: 1  # The max round limit for completing the user request
-SLEEP_TIME: 1  # The sleep time between each step to wait for the window to be ready
+MAX_STEP: 100  # Raised: complex multi-app tasks need more room; MCP can set timeout anyway
+MAX_ROUND: 1  # Correct for MCP use — one task per launch
+SLEEP_TIME: 2  # Raised: gives slow apps time to respond before next action
 RECTANGLE_TIME: 1
 
 # Action Configuration
-ACTION_SEQUENCE: False  # Whether to output the action sequence (from legacy config)
-SHOW_VISUAL_OUTLINE_ON_SCREEN: False  # Skip rendering visual outline on screen if not necessary
-MAXIMIZE_WINDOW: False  # Whether to maximize the application window before the action
-JSON_PARSING_RETRY: 3  # The retry times for the json parsing
+ACTION_SEQUENCE: False  # Legacy; leave off
+SHOW_VISUAL_OUTLINE_ON_SCREEN: True  # Renders red outline on desktop — great for monitoring/debugging live
+MAXIMIZE_WINDOW: False  # KEEP FALSE: maximize failure raises ToolError with no fallback — risky for dialogs/system windows
+JSON_PARSING_RETRY: 5  # Raised: LLM sometimes produces malformed JSON; more retries = more resilience
 
 # Safety
-SAFE_GUARD: True  # Whether to use the safe guard to prevent sensitive operations (from legacy config)
+SAFE_GUARD: False  # Must be False for non-interactive MCP use — Prompt.ask() on stdin would hang subprocess
+                  # Destructive action verification handled via MCP wrapper system prompt instead
 CONTROL_LIST: ["Button", "Edit", "TabItem", "Document", "ListItem", "MenuItem", "ScrollBar", "TreeItem", "Hyperlink", "ComboBox", "RadioButton", "Spinner", "CheckBox", "Group", "Text"]
 
 # History
-HISTORY_KEYS: ["step", "subtask", "action_representation", "user_confirm"]
+HISTORY_KEYS: ["step", "subtask", "action_representation", "user_confirm", "results", "application"]  # Extended: results + app name give richer context per step
 
 # Annotation
 ANNOTATION_COLORS:
@@ -48,59 +49,65 @@ ANNOTATION_FONT_SIZE: 22
 
 # Control Actions
 CLICK_API: "click_input"  # The click API
-AFTER_CLICK_WAIT: 0  # The wait time after clicking in seconds
+AFTER_CLICK_WAIT: 0.3  # Short settle time after clicks — apps are already slow enough but UI state needs to stabilize
 INPUT_TEXT_API: "type_keys"  # The input text API: type_keys or set_text
-INPUT_TEXT_ENTER: False  # Whether to press enter after typing the text
-INPUT_TEXT_INTER_KEY_PAUSE: 0.05  # The pause time between each key press
+INPUT_TEXT_ENTER: False  # KEEP FALSE — auto-Enter after every type call risks premature form submission; LLM decides
+INPUT_TEXT_INTER_KEY_PAUSE: 0.05  # Fine as-is
 
 
 # Logging
-PRINT_LOG: False  # Whether to print the log
-CONCAT_SCREENSHOT: False  # Whether to concat the screenshot for the control item
-LOG_LEVEL: "DEBUG"  # The log level
-INCLUDE_LAST_SCREENSHOT: True  # Whether to include the last screenshot in the observation
-REQUEST_TIMEOUT: 250  # The call timeout for the GPT-V model
-LOG_XML: False  # Whether to log the xml file at every step
-LOG_TO_MARKDOWN: True  # Whether to save the log to markdown file
-SCREENSHOT_TO_MEMORY: True  # Whether to allow the screenshot to memory
+PRINT_LOG: True  # Enable: MCP wrapper reads stdout for live monitoring
+CONCAT_SCREENSHOT: False  # Off: storage cost prohibitive at 4K
+LOG_LEVEL: "DEBUG"  # Full observability
+INCLUDE_LAST_SCREENSHOT: False  # Off at 4K: raw PNG to LLM vision model is extremely token-expensive
+                                 # LLM receives OmniParser's parsed text output instead (bounding boxes, labels)
+                                 # Screenshots still saved to filesystem via SAVE_FULL_SCREEN for audit
+REQUEST_TIMEOUT: 300  # Raised: vision model calls on complex screens can be slow
+LOG_XML: False  # Off: XML trees are huge and rarely needed
+LOG_TO_MARKDOWN: True  # Human-readable session logs
+SCREENSHOT_TO_MEMORY: False  # Off: 4K screenshots in LLM context window = massive token cost
+                              # Perception comes from OmniParser text output, not raw vision
 
 # Image Performance
-DEFAULT_PNG_COMPRESS_LEVEL: 1  # The compress level for PNG image, 0-9
+DEFAULT_PNG_COMPRESS_LEVEL: 9  # Max compression — 4K screenshots saved to disk; storage matters
 
 # Save Options
-SAVE_UI_TREE: False  # Whether to save the UI tree at each step
-SAVE_FULL_SCREEN: False  # Whether to save the full screen at each step
+SAVE_UI_TREE: False  # Leave off — huge files, rarely needed unless debugging UIA issues
+SAVE_FULL_SCREEN: True  # Enable: full desktop screenshot per step; invaluable for post-task audit
 
 # Task Management
 TASK_STATUS: True  # Whether to record the status of the tasks in batch execution mode
-SAVE_EXPERIENCE: "always_not"  # always, always_not, ask, auto
+SAVE_EXPERIENCE: "always"  # always, always_not, ask, auto
 
 # Evaluation
 EVA_SESSION: True  # Whether to include the session in the evaluation
 EVA_ROUND: False
-EVA_ALL_SCREENSHOTS: True  # Whether to include all the screenshots in the evaluation
+EVA_ALL_SCREENSHOTS: False  # Off: no need to send every step screenshot to evaluation LLM; results/logs are sufficient
 
 # Customization
-ASK_QUESTION: False  # Whether to allow the agent to ask questions
-USE_CUSTOMIZATION: False  # Whether to use the customization
+ASK_QUESTION: True  # Enable: agent can flag uncertainty; in MCP subprocess, falls back gracefully (no hang)
+                   # Answers auto-saved to QA_PAIR_FILE, building knowledge over time
+USE_CUSTOMIZATION: True  # Enable: inject your persistent rules/facts into every task
 QA_PAIR_FILE: "customization/global_memory.jsonl"
-QA_PAIR_NUM: 20  # The number of QA pairs for the customization
+QA_PAIR_NUM: 30  # Raised slightly: loads last 30 lines of QA file (no semantic match — keep file curated)
 
 # Omniparser
 OMNIPARSER:
-  ENDPOINT: "https://aeb8ef731536d2d6c2.gradio.live"
+  ENDPOINT: "http://localhost:8010"
   BOX_THRESHOLD: 0.05
   IOU_THRESHOLD: 0.1
   USE_PADDLEOCR: True
   IMGSZ: 640
 
 # Control Filtering Configuration
-CONTROL_FILTER_TYPE: []  # List of control filter types: 'TEXT', 'SEMANTIC', 'ICON'
-CONTROL_FILTER_TOP_K_PLAN: 2  # Control filter effect on top k plans from UFO
-CONTROL_FILTER_TOP_K_SEMANTIC: 15  # Control filter top k for semantic similarity
-CONTROL_FILTER_TOP_K_ICON: 15  # Control filter top k for icon similarity
-CONTROL_FILTER_MODEL_SEMANTIC_NAME: "all-MiniLM-L6-v2"  # Semantic similarity model
-CONTROL_FILTER_MODEL_ICON_NAME: "clip-ViT-B-32"  # Icon similarity model
+CONTROL_FILTER_TYPE: ["SEMANTIC"]  # Semantic filtering: cuts 200+ controls down to top-k relevant ones
+                                   # Reduces LLM prompt size significantly on complex UIs
+                                   # TEXT is too brittle; ICON adds latency without much gain
+CONTROL_FILTER_TOP_K_PLAN: 2  # Fine as-is
+CONTROL_FILTER_TOP_K_SEMANTIC: 20  # Raised slightly: more candidates = less chance of missing the right control
+CONTROL_FILTER_TOP_K_ICON: 15  # Unused (ICON filter disabled), keep for reference
+CONTROL_FILTER_MODEL_SEMANTIC_NAME: "all-MiniLM-L6-v2"  # Good balance of speed/accuracy
+CONTROL_FILTER_MODEL_ICON_NAME: "clip-ViT-B-32"  # Unused (ICON filter disabled)
 
 
 # MCP (Model Context Protocol) Integration
